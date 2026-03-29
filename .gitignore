@@ -6,6 +6,9 @@
 **/[Uu]ser[Ss]ettings/
 **/*.csproj
 **/*.sln
-.vscode/
-*.db
-*.ipch
+# Ignora tutte le cartelle .vscode ovunque si trovino
+**/.vscode/
+
+# Ignora specificamente i database giganti di VS Code
+*.vc.db
+*.opendb
