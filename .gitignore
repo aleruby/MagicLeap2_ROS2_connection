@@ -6,3 +6,6 @@
 **/[Uu]ser[Ss]ettings/
 **/*.csproj
 **/*.sln
+.vscode/
+*.db
+*.ipch
