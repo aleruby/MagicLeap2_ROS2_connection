@@ -1,0 +1,89 @@
+/config_ML_node:
+  ros__parameters:
+
+    general:
+      topic_name : "/magic_leap2"
+
+    picture_center: 
+      enabled: false
+      # stream 0 is the simple RGB camera stream. 
+      # stream 1 is the AR stream with the world as background and the user as foreground.
+      stream: 0
+      # for stream 0 the possible resolution are 640x480, 1280x720, 1920x1080, 3840x2160, 2048x1536, 1280x960, 1440x1080, 2880x2160, 4096x3072.
+      # for stream 1 the possible resolution are 648x720, 972x1080, 1944x2160, 960x720, 1440x1080, 2880x2160.
+      resolution_width: 1920
+      resolution_height: 1080
+      update_rate: 30                         # possible values in range [30, 60]
+      format: "jpeg"
+
+    depth_center: 
+      enabled: false
+      # stream 0 is the long range depth stream.
+      # stream 1 is the short range depth stream.
+      stream: 1
+      resolution_width: 544
+      resolution_height: 480
+      # for stream 0 the possible update rates are 1, 5.
+      # for stream 1 the possible update rates are 5, 30, 60.
+      update_rate: 30
+      format: "Depth32" # possible values = "Depth32", "DepthRaw".
+
+    world_center: 
+      enabled: false
+      stream: 0                               # possible values = 0, 1
+      resolution_width: 1016
+      resolution_height: 1016
+      update_rate: 30
+      format: "Grayscale"
+
+    world_right: 
+      enabled: false
+      stream: 0                               # possible values = 0, 1
+      resolution_width: 1016
+      resolution_height: 1016
+      update_rate: 30
+      format: "Grayscale"
+
+    world_left: 
+      enabled: false
+      stream: 0                               # possible values = 0, 1
+      resolution_width: 1016
+      resolution_height: 1016
+      update_rate: 30
+      format: "Grayscale"
+
+    eye_temple_right:
+      enabled: false
+      stream: 0
+      resolution_width: 400
+      resolution_height: 400
+      update_rate: 30
+      format: "Grayscale"
+
+    eye_temple_left:
+      enabled: false
+      stream: 0
+      resolution_width: 400
+      resolution_height: 400
+      update_rate: 30
+      format: "Grayscale"
+
+    eye_nasal_right:
+      enabled: false
+      stream: 0
+      resolution_width: 400
+      resolution_height: 400
+      update_rate: 30
+      format: "Grayscale"
+
+    eye_nasal_left:
+      enabled: false
+      stream: 0
+      resolution_width: 400
+      resolution_height: 400
+      update_rate: 30
+      format: "Grayscale"
+
+    # the other sensors include gyroscope, accelerometer and ambient light sensor.
+    other_sensors:
+      enabled: false
