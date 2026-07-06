@@ -1,0 +1,2 @@
+We have uploaded three Unity project folders to this directory containing demos created to test the connection between Unity and ROS2.
+Therefore, they are not required for the bridge to function; they are merely internal tests.
