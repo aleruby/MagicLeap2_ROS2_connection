@@ -471,7 +471,7 @@ public class Color_Definitive : MonoBehaviour
                 frame_id = "magicleap_world",
                 stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg(sec, nanosec)
             },
-            child_frame_id = "color_optical_frame",
+            child_frame_id = "color_frame",
             transform = new TransformMsg
             {
                 translation = new Vector3Msg
@@ -490,9 +490,35 @@ public class Color_Definitive : MonoBehaviour
             }
         };
 
+        TransformStampedMsg transform1 = new TransformStampedMsg
+        {
+            header = new RosMessageTypes.Std.HeaderMsg 
+            { 
+                frame_id = "color_frame",
+                stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg(sec, nanosec)
+            },
+            child_frame_id = "color_optical_frame",
+            transform = new TransformMsg
+            {
+                translation = new Vector3Msg
+                {
+                    x = 0,
+                    y = 0,
+                    z = 0
+                },
+                rotation = new QuaternionMsg
+                {
+                    x = - 0.5,
+                    y = 0.5,
+                    z = - 0.5,
+                    w = 0.5                   
+                }
+            }
+        };
+
         TFMessageMsg poseMsg = new TFMessageMsg
         {
-            transforms = new TransformStampedMsg[]{transform0}
+            transforms = new TransformStampedMsg[]{transform0, transform1}
         };
 
         ros.Publish(topicNamePose, poseMsg);
