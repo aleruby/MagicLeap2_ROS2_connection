@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-using UnityEngine.InputSystem;
-
 using Unity.Robotics.ROSTCPConnector;
 using RosMessageTypes.Sensor;
 using RosMessageTypes.Geometry;
@@ -20,19 +18,53 @@ public class Other_Sensors_Definitive : MonoBehaviour
 
     StringMsg msg;
 
-    private bool work = true;
+    private bool work = false;
 
     private ROSConnection ros;
     private string topicNameGyro;
     private string topicNameAcc;
     private string topicNameLightSensor;
 
+    long old_gyro_time = 0;
+    long old_accel_time = 0;
+    long old_light_time = 0;
+
+    private AndroidJavaObject pluginInstance = null;
+
+    private long _bootTimeUnixNano;
+
     void Start()
     {
-        
+        Time.fixedDeltaTime = 0.01f; // 100 Hz
+
+        long currentUnixNano = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
+        long currentSystemNano = System.Diagnostics.Stopwatch.GetTimestamp() * (1_000_000_000 / System.Diagnostics.Stopwatch.Frequency);
+        _bootTimeUnixNano = currentUnixNano - currentSystemNano;
+
+        try
+        {
+            using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            {
+                AndroidJavaObject currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+
+                pluginInstance = new AndroidJavaObject(
+                    "com.federicocompagno_alessandrorubert.ml2_ros2_bridge.sensorlib.SensorManagerPlugin",
+                    currentActivity
+                );
+            }
+            Debug.Log("Plugin SensorManager loaded succesfully!");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error during the initialization of the plugin: {e.Message}");
+        }
     }
 
     void Update()
+    {
+    }
+    
+    void FixedUpdate()
     {
         if (turn_on)
         {
@@ -40,131 +72,138 @@ public class Other_Sensors_Definitive : MonoBehaviour
             topicNameAcc = topic_base_name + "/accel/imu"; 
             topicNameLightSensor = topic_base_name + "/light_sensor";
 
-            InputSystem.EnableDevice(UnityEngine.InputSystem.Gyroscope.current);
-            InputSystem.EnableDevice(UnityEngine.InputSystem.Accelerometer.current);
-            InputSystem.EnableDevice(UnityEngine.InputSystem.LightSensor.current);
-
             ros = ROSConnection.GetOrCreateInstance();
             ros.RegisterPublisher<ImuMsg>(topicNameGyro);
             ros.RegisterPublisher<ImuMsg>(topicNameAcc);
             ros.RegisterPublisher<IlluminanceMsg>(topicNameLightSensor);
             ros.RegisterPublisher<StringMsg>(topic_base_name + "/log");
-
-            if  (UnityEngine.InputSystem.Gyroscope.current.enabled)
-            {
-                msg = new StringMsg("gyro: Gyroscope  is  enabled.");
-                ros.Publish(topic_base_name + "/log", msg);
-            }
-            if  (UnityEngine.InputSystem.Accelerometer.current.enabled)
-            {
-                msg = new StringMsg("accelerometer: Accelerometer is  enabled.");
-                ros.Publish(topic_base_name + "/log", msg);
-            }
-            if  (UnityEngine.InputSystem.LightSensor.current.enabled)
-            {
-                msg = new StringMsg("light_sensor: LightSensor is  enabled.");
-                ros.Publish(topic_base_name + "/log", msg);
-            }
+            
 
             work = true;
             turn_on = false;
         }
 
+        int sec = 0;
+        uint nsec = 0;
+
         if (work)
         {
-            Vector3 angularVelocity = UnityEngine.InputSystem.Gyroscope.current.angularVelocity.ReadValue();
+            
+            if (pluginInstance == null)
+            {
+                return;
+            }
             
 
-            DateTime utcNow = DateTime.UtcNow;
-            long unixTicks = utcNow.Ticks - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
-            uint sec = (uint)(unixTicks / TimeSpan.TicksPerSecond);
-            uint nsec = (uint)((unixTicks % TimeSpan.TicksPerSecond) * 100);
+            // Accelerometer
+            float[] accel = pluginInstance.Call<float[]>("getAccelValues");
+            long accelTime = pluginInstance.Call<long>("getAccelTimestamp");
 
-            ImuMsg gyroMsg = new ImuMsg
+            if (old_accel_time != accelTime)
             {
-                header = new RosMessageTypes.Std.HeaderMsg
+                old_accel_time = accelTime;
+                long tempoInNano = (long)accelTime * 1_000_000;
+
+                long frameUnixNano = _bootTimeUnixNano + tempoInNano;
+
+                sec = (int)(frameUnixNano / 1_000_000_000);
+                nsec = (uint)(frameUnixNano % 1_000_000_000);
+
+                ImuMsg accMsg = new ImuMsg
                 {
-                    frame_id = "magicleap_gyro",
-                    stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg((int)sec, nsec)
-                },
-                orientation = new QuaternionMsg(),
-                angular_velocity = new Vector3Msg
+                    header = new RosMessageTypes.Std.HeaderMsg
+                    {
+                        frame_id = "magicleap_accel",
+                        stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg(sec, nsec)
+                    },
+                    orientation = new QuaternionMsg(),
+                    angular_velocity = new Vector3Msg { x = 0, y = 0, z = 0},
+                    linear_acceleration = new Vector3Msg
+                    {
+                        x = accel[1],
+                        y = -accel[0],
+                        z = accel[2]
+                    },
+                    orientation_covariance = new double[] {-1.0, 0, 0, 0, 0, 0, 0, 0, 0},
+                    angular_velocity_covariance = new double[9],
+                    linear_acceleration_covariance = new double[9]
+                };
+                ros.Publish(topicNameAcc, accMsg);
+            }
+
+            // Gyro
+            float[] gyro = pluginInstance.Call<float[]>("getGyroValues");
+            long gyroTime = pluginInstance.Call<long>("getGyroTimestamp");
+
+            if (old_gyro_time != gyroTime)
+            {   
+                old_gyro_time = gyroTime;
+                long tempoInNano = (long)gyroTime * 1_000_000;
+
+                long frameUnixNano = _bootTimeUnixNano + tempoInNano;
+
+                sec = (int)(frameUnixNano / 1_000_000_000);
+                nsec = (uint)(frameUnixNano % 1_000_000_000);
+
+                ImuMsg gyroMsg = new ImuMsg
                 {
-                    x = angularVelocity.y,
-                    y = angularVelocity.x,
-                    z = angularVelocity.z
-                },
-                linear_acceleration = new Vector3Msg { x = 0, y = 0, z = 0},
-                orientation_covariance = new double[] {-1.0, 0, 0, 0, 0, 0, 0, 0, 0},
-                angular_velocity_covariance = new double[9],
-                linear_acceleration_covariance = new double[9]
-            };
-            ros.Publish(topicNameGyro, gyroMsg);
+                    header = new RosMessageTypes.Std.HeaderMsg
+                    {
+                        frame_id = "magicleap_gyro",
+                        stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg(sec, nsec)
+                    },
+                    orientation = new QuaternionMsg(),
+                    angular_velocity = new Vector3Msg
+                    {
+                        x = gyro[1],
+                        y = -gyro[0],
+                        z = gyro[2]
+                    },
+                    linear_acceleration = new Vector3Msg { x = 0, y = 0, z = 0},
+                    orientation_covariance = new double[] {-1.0, 0, 0, 0, 0, 0, 0, 0, 0},
+                    angular_velocity_covariance = new double[9],
+                    linear_acceleration_covariance = new double[9]
+                };
+                ros.Publish(topicNameGyro, gyroMsg);
+            }
 
-
-            Vector3 acceleration = UnityEngine.InputSystem.Accelerometer.current.acceleration.ReadValue();
-
-            utcNow = DateTime.UtcNow;
-            unixTicks = utcNow.Ticks - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
-            sec = (uint)(unixTicks / TimeSpan.TicksPerSecond);
-            nsec = (uint)((unixTicks % TimeSpan.TicksPerSecond) * 100);
+            // light Sensor
+            float light = pluginInstance.Call<float>("getLightValue");
+            long lightTime = pluginInstance.Call<long>("getLightTimestamp");
             
-            ImuMsg accMsg = new ImuMsg
+            if (old_light_time != lightTime)
             {
-                header = new RosMessageTypes.Std.HeaderMsg
+                old_light_time = lightTime;
+
+                long tempoInNano = (long)lightTime * 1_000_000;
+
+                long frameUnixNano = _bootTimeUnixNano + tempoInNano;
+
+                sec = (int)(frameUnixNano / 1_000_000_000);
+                nsec = (uint)(frameUnixNano % 1_000_000_000);
+
+                IlluminanceMsg illuminanceMsg= new IlluminanceMsg
                 {
-                    frame_id = "magicleap_accel",
-                    stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg((int)sec, nsec)
-                },
-                orientation = new QuaternionMsg(),
-                angular_velocity = new Vector3Msg { x = 0, y = 0, z = 0},
-                linear_acceleration = new Vector3Msg
-                {
-                    x = acceleration.y,
-                    y = acceleration.x,
-                    z = acceleration.z
-                },
-                orientation_covariance = new double[] {-1.0, 0, 0, 0, 0, 0, 0, 0, 0},
-                angular_velocity_covariance = new double[9],
-                linear_acceleration_covariance = new double[9]
-            };
-            ros.Publish(topicNameAcc, accMsg);
+                    header = new RosMessageTypes.Std.HeaderMsg
+                    {
+                        frame_id = "magic_leap_light_sensor",
+                        stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg(sec, nsec)
+                    },
+                    illuminance = light,
+                    variance = 0
+                };
 
-
-            float lightLevel = UnityEngine.InputSystem.LightSensor.current.lightLevel.ReadValue();
-
-            utcNow = DateTime.UtcNow;
-            unixTicks = utcNow.Ticks - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
-            sec = (uint)(unixTicks / TimeSpan.TicksPerSecond);
-            nsec = (uint)((unixTicks % TimeSpan.TicksPerSecond) * 100);
-
-            IlluminanceMsg illuminanceMsg= new IlluminanceMsg
-            {
-                header = new RosMessageTypes.Std.HeaderMsg
-                {
-                    frame_id = "magic_leap_light_sensor",
-                    stamp = new RosMessageTypes.BuiltinInterfaces.TimeMsg((int)sec, nsec)
-                },
-                illuminance = lightLevel,
-                variance = 0
-            };
-
-            ros.Publish(topicNameLightSensor, illuminanceMsg);
+                ros.Publish(topicNameLightSensor, illuminanceMsg);
+            }
         }
+    
     }
 
     private void OnDisable()
     {
-        InputSystem.DisableDevice(UnityEngine.InputSystem.Gyroscope.current);
-        msg = new StringMsg("gyro: Gyroscope  is  disabled.");
-        ros.Publish(topic_base_name + "/log", msg);
-
-        InputSystem.DisableDevice(UnityEngine.InputSystem.Accelerometer.current);
-        msg = new StringMsg("accelerometer: Accelerometer is  disabled.");
-        ros.Publish(topic_base_name + "/log", msg);
-
-        InputSystem.DisableDevice(UnityEngine.InputSystem.LightSensor.current);
-        msg = new StringMsg("light_sensor: LightSensor is  disabled.");
-        ros.Publish(topic_base_name + "/log", msg);
+        if (pluginInstance != null)
+        {
+            pluginInstance.Call("stopListening");
+        }
     }
 }
