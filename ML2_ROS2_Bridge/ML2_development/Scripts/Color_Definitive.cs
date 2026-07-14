@@ -77,14 +77,12 @@ public class Color_Definitive : MonoBehaviour
     public enum possible_format : int {Jpeg = 0};
     public possible_format Format;
 
-    private long _bootTimeUnixNano;
+    [HideInInspector]
+    public long _bootTimeUnixNano;
 
     // Start is called before the first frame update
     void Start()
     {
-        long currentUnixNano = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
-        long currentSystemNano = System.Diagnostics.Stopwatch.GetTimestamp() * (1_000_000_000 / System.Diagnostics.Stopwatch.Frequency);
-        _bootTimeUnixNano = currentUnixNano - currentSystemNano;
     }
 
     // Update is called once per frame

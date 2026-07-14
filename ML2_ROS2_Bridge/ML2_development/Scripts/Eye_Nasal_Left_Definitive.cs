@@ -51,13 +51,11 @@ public class Eye_Nasal_Left_Definitive : MonoBehaviour
     public enum possible_format : int {Grayscale = 0};
     public possible_format Format;
 
-    private long _bootTimeUnixNano;
+    [HideInInspector]
+    public long _bootTimeUnixNano;
 
     void Start()
     {
-        long currentUnixNano = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
-        long currentSystemNano = System.Diagnostics.Stopwatch.GetTimestamp() * (1_000_000_000 / System.Diagnostics.Stopwatch.Frequency);
-        _bootTimeUnixNano = currentUnixNano - currentSystemNano;
     }
 
     void Update()

@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+
+using UnityEngine.XR.MagicLeap;
 
 using Unity.Robotics.ROSTCPConnector;
 using RosMessageTypes.Std;
@@ -138,6 +141,8 @@ public class Configurator : MonoBehaviour
 
     public AppConfig conf;
 
+    private long _bootTimeUnixNano;
+
     private ROSConnection ros;
 
     private Other_Sensors_Definitive _Other_Sensors_Definitive;
@@ -160,8 +165,13 @@ public class Configurator : MonoBehaviour
 
     private Eye_Temple_Left_Definitive _Eye_Temple_Left_Definitive;
 
+
     void Start()
     {
+        long currentUnixNano = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
+        long currentSystemNano = System.Diagnostics.Stopwatch.GetTimestamp() * (1_000_000_000 / System.Diagnostics.Stopwatch.Frequency);
+        _bootTimeUnixNano = currentUnixNano - currentSystemNano;
+
         ros = ROSConnection.GetOrCreateInstance();
         ros.RegisterPublisher<StringMsg>("request");
         ros.Subscribe<StringMsg>("/MagicLeap/config", ReceiveConfig);
@@ -274,13 +284,37 @@ public class Configurator : MonoBehaviour
         StringMsg logconfigurazione = new StringMsg(log);
         ros.Publish(conf.general.topic_name + "/log", logconfigurazione);
 
-        // Other Sensrors configuration
+        // Obtaining the components
         _Other_Sensors_Definitive = GetComponent<Other_Sensors_Definitive>();
+        _Color_Definitive = GetComponent<Color_Definitive>();
+        _Depth_Definitive = GetComponent<Depth_Definitive>();
+        _World_Center_Definitive = GetComponent<World_Center_Definitive>();
+        _World_Right_Definitive = GetComponent<World_Right_Definitive>();
+        _World_Left_Definitive = GetComponent<World_Left_Definitive>();
+        _Eye_Nasal_Right_Definitive = GetComponent<Eye_Nasal_Right_Definitive>();
+        _Eye_Nasal_Left_Definitive = GetComponent<Eye_Nasal_Left_Definitive>();
+        _Eye_Temple_Right_Definitive = GetComponent<Eye_Temple_Right_Definitive>();
+        _Eye_Temple_Left_Definitive = GetComponent<Eye_Temple_Left_Definitive>();
+
+        // _bootTimeUnixNano sharing
+        _Other_Sensors_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _Color_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _Depth_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _World_Center_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _World_Right_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _World_Left_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _Eye_Nasal_Right_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _Eye_Nasal_Left_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _Eye_Temple_Right_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+        _Eye_Temple_Left_Definitive._bootTimeUnixNano = _bootTimeUnixNano;
+
+        
+
+        // Other Sensrors configuration
         _Other_Sensors_Definitive.topic_base_name = conf.general.topic_name;
         _Other_Sensors_Definitive.turn_on = conf.other_sensors.enabled;
 
         // Color configuration
-        _Color_Definitive = GetComponent<Color_Definitive>();
         _Color_Definitive.topic_base_name = conf.general.topic_name;
         _Color_Definitive.stream_Index = (Color_Definitive.stream) conf.picture_center.stream;
         _Color_Definitive.UpdateRate = conf.picture_center.update_rate;
@@ -354,7 +388,6 @@ public class Configurator : MonoBehaviour
         _Color_Definitive.turn_on = conf.picture_center.enabled;
 
         // Depth configuration
-        _Depth_Definitive = GetComponent<Depth_Definitive>();
         _Depth_Definitive.topic_base_name = conf.general.topic_name;
         _Depth_Definitive.stream_Index = (Depth_Definitive.stream) conf.depth_center.stream;
         if (conf.depth_center.resolution_width == 544 && conf.depth_center.resolution_height == 480)
@@ -395,7 +428,6 @@ public class Configurator : MonoBehaviour
         _Depth_Definitive.turn_on = conf.depth_center.enabled;
 
         // World Center configuration
-        _World_Center_Definitive = GetComponent<World_Center_Definitive>();
         _World_Center_Definitive.topic_base_name = conf.general.topic_name;
         _World_Center_Definitive.stream_Index = (World_Center_Definitive.stream) conf.world_center.stream;
         if (conf.world_center.resolution_width == 1016 && conf.world_center.resolution_height == 1016)
@@ -409,7 +441,6 @@ public class Configurator : MonoBehaviour
         _World_Center_Definitive.turn_on = conf.world_center.enabled;
 
         // Word Right configuration
-        _World_Right_Definitive = GetComponent<World_Right_Definitive>();
         _World_Right_Definitive.topic_base_name = conf.general.topic_name;
         _World_Right_Definitive.stream_Index = (World_Right_Definitive.stream) conf.world_right.stream;
         if (conf.world_right.resolution_width == 1016 && conf.world_right.resolution_height == 1016)
@@ -423,7 +454,6 @@ public class Configurator : MonoBehaviour
         _World_Right_Definitive.turn_on = conf.world_right.enabled;
 
         // Word Left configuration
-        _World_Left_Definitive = GetComponent<World_Left_Definitive>();
         _World_Left_Definitive.topic_base_name = conf.general.topic_name;
         _World_Left_Definitive.stream_Index = (World_Left_Definitive.stream) conf.world_center.stream;
         if (conf.world_left.resolution_width == 1016 && conf.world_left.resolution_height == 1016)
@@ -437,7 +467,6 @@ public class Configurator : MonoBehaviour
         _World_Left_Definitive.turn_on = conf.world_left.enabled;
 
         // Eye Nasal Right configuration
-        _Eye_Nasal_Right_Definitive = GetComponent<Eye_Nasal_Right_Definitive>();
         _Eye_Nasal_Right_Definitive.topic_base_name = conf.general.topic_name;
         _Eye_Nasal_Right_Definitive.stream_Index = (Eye_Nasal_Right_Definitive.stream) conf.eye_nasal_right.stream;
         if (conf.eye_nasal_right.resolution_width == 400 && conf.eye_nasal_right.resolution_height == 400)
@@ -451,7 +480,6 @@ public class Configurator : MonoBehaviour
         _Eye_Nasal_Right_Definitive.turn_on = conf.eye_nasal_right.enabled;
 
         // Eye Nasal Left configuration
-        _Eye_Nasal_Left_Definitive = GetComponent<Eye_Nasal_Left_Definitive>();
         _Eye_Nasal_Left_Definitive.topic_base_name = conf.general.topic_name;
         _Eye_Nasal_Left_Definitive.stream_Index = (Eye_Nasal_Left_Definitive.stream) conf.eye_nasal_left.stream;
         if (conf.eye_nasal_left.resolution_width == 400 && conf.eye_nasal_left.resolution_height == 400)
@@ -465,7 +493,6 @@ public class Configurator : MonoBehaviour
         _Eye_Nasal_Left_Definitive.turn_on = conf.eye_nasal_left.enabled;
 
         // Eye Temple Right configuration
-        _Eye_Temple_Right_Definitive = GetComponent<Eye_Temple_Right_Definitive>();
         _Eye_Temple_Right_Definitive.topic_base_name = conf.general.topic_name;
         _Eye_Temple_Right_Definitive.stream_Index = (Eye_Temple_Right_Definitive.stream) conf.eye_temple_right.stream;
         if (conf.eye_temple_right.resolution_width == 400 && conf.eye_temple_right.resolution_height == 400)
@@ -479,7 +506,6 @@ public class Configurator : MonoBehaviour
         _Eye_Temple_Right_Definitive.turn_on = conf.eye_temple_right.enabled;
 
         // Eye Temple Left configuration
-        _Eye_Temple_Left_Definitive = GetComponent<Eye_Temple_Left_Definitive>();
         _Eye_Temple_Left_Definitive.topic_base_name = conf.general.topic_name;
         _Eye_Temple_Left_Definitive.stream_Index = (Eye_Temple_Left_Definitive.stream) conf.eye_temple_left.stream;
         if (conf.eye_temple_left.resolution_width == 400 && conf.eye_temple_left.resolution_height == 400)

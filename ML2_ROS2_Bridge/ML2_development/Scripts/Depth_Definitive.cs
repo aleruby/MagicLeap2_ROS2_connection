@@ -56,14 +56,11 @@ public class Depth_Definitive : MonoBehaviour
     public enum possible_format : int {Depth32 = 0, DepthRaw = 1};
     public possible_format format;
 
-    
-    private long _bootTimeUnixNano;
+    [HideInInspector]
+    public long _bootTimeUnixNano;
     
     void Start()
     {
-        long currentUnixNano = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
-        long currentSystemNano = System.Diagnostics.Stopwatch.GetTimestamp() * (1_000_000_000 / System.Diagnostics.Stopwatch.Frequency);
-        _bootTimeUnixNano = currentUnixNano - currentSystemNano;
     }
 
     

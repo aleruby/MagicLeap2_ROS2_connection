@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+using UnityEngine.XR.MagicLeap;
+
 using Unity.Robotics.ROSTCPConnector;
 using RosMessageTypes.Sensor;
 using RosMessageTypes.Geometry;
@@ -31,15 +33,12 @@ public class Other_Sensors_Definitive : MonoBehaviour
 
     private AndroidJavaObject pluginInstance = null;
 
-    private long _bootTimeUnixNano;
+    [HideInInspector]
+    public long _bootTimeUnixNano;
 
     void Start()
     {
         Time.fixedDeltaTime = 0.01f; // 100 Hz
-
-        long currentUnixNano = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
-        long currentSystemNano = System.Diagnostics.Stopwatch.GetTimestamp() * (1_000_000_000 / System.Diagnostics.Stopwatch.Frequency);
-        _bootTimeUnixNano = currentUnixNano - currentSystemNano;
 
         try
         {
@@ -102,9 +101,8 @@ public class Other_Sensors_Definitive : MonoBehaviour
             if (old_accel_time != accelTime)
             {
                 old_accel_time = accelTime;
-                long tempoInNano = (long)accelTime * 1_000_000;
-
-                long frameUnixNano = _bootTimeUnixNano + tempoInNano;
+                MLResult result = MLTime.ConvertMLTimeToSystemTime(accelTime, out long converted_time); // API are wrong; this method does exactly the opposite.
+                long frameUnixNano = _bootTimeUnixNano + converted_time;
 
                 sec = (int)(frameUnixNano / 1_000_000_000);
                 nsec = (uint)(frameUnixNano % 1_000_000_000);
@@ -138,9 +136,8 @@ public class Other_Sensors_Definitive : MonoBehaviour
             if (old_gyro_time != gyroTime)
             {   
                 old_gyro_time = gyroTime;
-                long tempoInNano = (long)gyroTime * 1_000_000;
-
-                long frameUnixNano = _bootTimeUnixNano + tempoInNano;
+                MLResult result = MLTime.ConvertMLTimeToSystemTime(gyroTime, out long converted_time); // API are wrong; this method does exactly the opposite.
+                long frameUnixNano = _bootTimeUnixNano + converted_time;
 
                 sec = (int)(frameUnixNano / 1_000_000_000);
                 nsec = (uint)(frameUnixNano % 1_000_000_000);
@@ -174,10 +171,8 @@ public class Other_Sensors_Definitive : MonoBehaviour
             if (old_light_time != lightTime)
             {
                 old_light_time = lightTime;
-
-                long tempoInNano = (long)lightTime * 1_000_000;
-
-                long frameUnixNano = _bootTimeUnixNano + tempoInNano;
+                MLResult result = MLTime.ConvertMLTimeToSystemTime(lightTime, out long converted_time); // API are wrong; this method does exactly the opposite.
+                long frameUnixNano = _bootTimeUnixNano + converted_time;
 
                 sec = (int)(frameUnixNano / 1_000_000_000);
                 nsec = (uint)(frameUnixNano % 1_000_000_000);
