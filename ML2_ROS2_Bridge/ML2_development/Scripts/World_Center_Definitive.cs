@@ -9,6 +9,7 @@ using System;
 
 using UnityEngine.XR.OpenXR;
 using MagicLeap.OpenXR.Features.PixelSensors;
+using UnityEngine.XR.MagicLeap;
 
 using Unity.Robotics.ROSTCPConnector;
 using RosMessageTypes.Sensor;
@@ -59,6 +60,14 @@ public class World_Center_Definitive : MonoBehaviour
 
     [HideInInspector]
     public long _bootTimeUnixNano;
+
+    /**
+    private readonly Dictionary<PixelSensorId, PixelSensor> connectedSensors = new();
+    if (connectedSensors.TryGetValue(sensorType, out sensor))
+    {
+        // Qui chiama il metodo sull'istanza interna "sensor"
+        sensor.GetSensorPose(frame.CaptureTime);
+    }*/                 
 
     void Start()
     {
@@ -147,14 +156,16 @@ public class World_Center_Definitive : MonoBehaviour
         }
         if (pose_on)
         {
-            DateTime utcNow = DateTime.UtcNow;
-            long unixTicks = utcNow.Ticks - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
-            uint sec = (uint)(unixTicks / TimeSpan.TicksPerSecond);
-            uint nanosec = (uint)((unixTicks % TimeSpan.TicksPerSecond) * 100);
+            long systemTimeNs = System.Diagnostics.Stopwatch.GetTimestamp() * (1000000000L / System.Diagnostics.Stopwatch.Frequency);
+            //MLResult result = MLTime.ConvertMLTimeToSystemTime(systemTimeNs, out long converted_time); // API are wrong; this method does exactly the opposite.
+            long frameUnixNano = _bootTimeUnixNano + systemTimeNs;
+            uint sec = (uint)(frameUnixNano / 1_000_000_000);
+            uint nsec = (uint)(frameUnixNano % 1_000_000_000);
             Pose sensorPose = pixelSensorFeature.GetSensorPose(sensorType);
-            SendPoseROS(sensorPose, (int)sec, nanosec);
+            SendPoseROS(sensorPose, (int)sec, nsec);
         }
     }
+
 
     private IEnumerator StartSensorStream()
     {
