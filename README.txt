@@ -1,0 +1,2 @@
+In the ML2_ROS2_Bridge folder, you will find everything needed to use or modify the bridge that enables sharing data collected by the headset with a ROS 2 system.
+The folder also contains the bachelor's thesis for which this system was developed.
